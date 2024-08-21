@@ -30,10 +30,25 @@ function loadInstrument() {
     
     fetch(filePath)
         .then(response => response.arrayBuffer())
-        .then(data => initAudioContext(data, currentSyllableIndex));
+        .then(data => {
+            if (selectedInstrument.endsWith('.mp3')) {
+                initAudioContextMP3(data, currentSyllableIndex);
+            } else {
+                initAudioContextWAV(data, currentSyllableIndex);
+            }
+        });
 }
 
-function initAudioContext(arrayBuffer, syllableIndex) {
+function initAudioContextWAV(arrayBuffer, syllableIndex) {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+        audioBuffers[syllableIndex] = buffer;
+    });
+}
+
+function initAudioContextMP3(arrayBuffer, syllableIndex) {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -190,15 +205,18 @@ function bufferToWave(buffer) {
         channels.push(buffer.getChannelData(i));
     }
 
-    while (pos < length) {
-        for (let i = 0; i < buffer.numberOfChannels; i++) {
-            view.setInt16(pos, channels[i][offset] * 0x7FFF, true);
-            pos += 2;
+    let sampleCount = buffer.length;
+    let bytesPerSample = 2;
+
+    for (let i = 0; i < sampleCount; i++) {
+        for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+            let sample = channels[channel][i] * 0x7FFF;
+            view.setInt16(pos, sample, true);
+            pos += bytesPerSample;
         }
-        offset++;
     }
 
-    return new Blob([view], { type: 'audio/wav' });
+    return view.buffer;
 }
 
 function writeString(view, offset, string) {
