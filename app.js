@@ -32,46 +32,54 @@ function loadInstrument() {
         .then(response => response.arrayBuffer())
         .then(data => {
             if (selectedInstrument.endsWith('.mp3')) {
-                initAudioContextMP3(data, currentSyllableIndex);
+                initAudioContextMP3(data);
             } else {
-                initAudioContextWAV(data, currentSyllableIndex);
+                initAudioContextWAV(data);
             }
         });
 }
 
-function initAudioContextWAV(arrayBuffer, syllableIndex) {
+function initAudioContextWAV(arrayBuffer) {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     audioContext.decodeAudioData(arrayBuffer)
         .then(buffer => {
-            audioBuffers[syllableIndex] = buffer;
+            audioBuffers[currentSyllableIndex] = buffer;
         })
         .catch(error => console.error('Error decoding WAV file:', error));
 }
 
-function initAudioContextMP3(arrayBuffer, syllableIndex) {
+function initAudioContextMP3(arrayBuffer) {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
     audioContext.decodeAudioData(arrayBuffer)
         .then(buffer => {
-            audioBuffers[syllableIndex] = buffer;
+            audioBuffers[currentSyllableIndex] = buffer;
         })
         .catch(error => console.error('Error decoding MP3 file:', error));
 }
 
 function playSound() {
-    if (audioBuffers[currentSyllableIndex]) {
-        let sourceNode = audioContext.createBufferSource();
-        sourceNode.buffer = audioBuffers[currentSyllableIndex];
+    if (audioBuffers.length === 0) return;
 
-        // ピッチを変更するための再生速度を設定
-        sourceNode.playbackRate.value = Math.pow(2, pitchControl.value / 12);
+    let playbackRate = Math.pow(2, pitchControl.value / 12);
+
+    let playNext = (index) => {
+        if (index >= audioBuffers.length) return;
+
+        let sourceNode = audioContext.createBufferSource();
+        sourceNode.buffer = audioBuffers[index];
+        sourceNode.playbackRate.value = playbackRate;
 
         sourceNode.connect(audioContext.destination);
         sourceNode.start(0);
-    }
+
+        sourceNode.onended = () => playNext(index + 1);
+    };
+
+    playNext(0);
 }
 
 function addSyllable() {
@@ -81,7 +89,6 @@ function addSyllable() {
     newOption.text = `音節 ${newIndex + 1}`;
     syllableSelect.add(newOption);
     
-    // 新しい音節を選択
     syllableSelect.value = newOption.value;
     changeSyllable();
     saveSettings();
@@ -97,7 +104,6 @@ function saveSettings() {
     localStorage.setItem('syllable', syllableSelect.value);
     localStorage.setItem('pitch', pitchControl.value);
 
-    // 音節データを保存
     let syllableBuffers = audioBuffers.map(buffer => bufferToWavArrayBuffer(buffer));
     localStorage.setItem('syllableBuffers', JSON.stringify(syllableBuffers));
 }
@@ -145,12 +151,10 @@ function bufferToWave(buffer) {
     let offset = 0;
     let pos = 0;
 
-    // RIFF Chunk Descriptor
     writeString(view, pos, 'RIFF'); pos += 4;
     view.setUint32(pos, length - 8, true); pos += 4;
     writeString(view, pos, 'WAVE'); pos += 4;
 
-    // fmt sub-chunk
     writeString(view, pos, 'fmt '); pos += 4;
     view.setUint32(pos, 16, true); pos += 4;
     view.setUint16(pos, 1, true); pos += 2;
@@ -160,11 +164,9 @@ function bufferToWave(buffer) {
     view.setUint16(pos, buffer.numberOfChannels * 2, true); pos += 2;
     view.setUint16(pos, 16, true); pos += 2;
 
-    // data sub-chunk
     writeString(view, pos, 'data'); pos += 4;
     view.setUint32(pos, length - pos - 4, true); pos += 4;
 
-    // Write interleaved data
     for (let i = 0; i < buffer.numberOfChannels; i++) {
         channels.push(buffer.getChannelData(i));
     }
