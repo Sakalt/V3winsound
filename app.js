@@ -6,9 +6,20 @@ let syllableSelect = document.getElementById('syllableSelect');
 let pitchControl = document.getElementById('pitchControl');
 let pitchValue = document.getElementById('pitchValue');
 
-instrumentSelect.addEventListener('change', loadInstrument);
-pitchControl.addEventListener('input', updatePitch);
-syllableSelect.addEventListener('change', changeSyllable);
+document.addEventListener('DOMContentLoaded', loadSettings);
+
+instrumentSelect.addEventListener('change', () => {
+    saveSettings();
+    loadInstrument();
+});
+pitchControl.addEventListener('input', () => {
+    pitchValue.textContent = pitchControl.value;
+    saveSettings();
+});
+syllableSelect.addEventListener('change', () => {
+    saveSettings();
+    changeSyllable();
+});
 document.getElementById('playButton').addEventListener('click', playSound);
 document.getElementById('addSyllableButton').addEventListener('click', addSyllable);
 document.getElementById('downloadButton').addEventListener('click', downloadEditedSound);
@@ -58,11 +69,69 @@ function addSyllable() {
     // 新しい音節を選択
     syllableSelect.value = newOption.value;
     changeSyllable();
+    saveSettings();
 }
 
 function changeSyllable() {
     currentSyllableIndex = syllableSelect.selectedIndex;
     loadInstrument();
+}
+
+function saveSettings() {
+    localStorage.setItem('instrument', instrumentSelect.value);
+    localStorage.setItem('syllable', syllableSelect.value);
+    localStorage.setItem('pitch', pitchControl.value);
+
+    // 音節データを保存
+    let syllableBuffers = audioBuffers.map(buffer => {
+        return bufferToWavArrayBuffer(buffer);
+    });
+    localStorage.setItem('syllableBuffers', JSON.stringify(syllableBuffers));
+}
+
+function loadSettings() {
+    let savedInstrument = localStorage.getItem('instrument');
+    let savedSyllable = localStorage.getItem('syllable');
+    let savedPitch = localStorage.getItem('pitch');
+    let savedSyllableBuffers = localStorage.getItem('syllableBuffers');
+
+    if (savedInstrument) {
+        instrumentSelect.value = savedInstrument;
+        loadInstrument();
+    }
+    
+    if (savedSyllable) {
+        syllableSelect.value = savedSyllable;
+    }
+
+    if (savedPitch) {
+        pitchControl.value = savedPitch;
+        pitchValue.textContent = savedPitch;
+    }
+
+    if (savedSyllableBuffers) {
+        let syllableBuffers = JSON.parse(savedSyllableBuffers);
+        audioBuffers = syllableBuffers.map(bufferData => {
+            return wavArrayBufferToBuffer(bufferData);
+        });
+    }
+}
+
+function bufferToWavArrayBuffer(buffer) {
+    let wav = bufferToWave(buffer);
+    return new Uint8Array(wav).buffer;
+}
+
+function wavArrayBufferToBuffer(arrayBuffer) {
+    let blob = new Blob([arrayBuffer], { type: 'audio/wav' });
+    return new Promise(resolve => {
+        let reader = new FileReader();
+        reader.onload = function() {
+            let context = new (window.AudioContext || window.webkitAudioContext)();
+            context.decodeAudioData(reader.result, resolve);
+        };
+        reader.readAsArrayBuffer(blob);
+    });
 }
 
 function downloadEditedSound() {
