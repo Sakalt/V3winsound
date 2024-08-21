@@ -43,22 +43,22 @@ function initAudioContextWAV(arrayBuffer, syllableIndex) {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
-    audioContext.decodeAudioData(arrayBuffer, function(buffer) {
-        audioBuffers[syllableIndex] = buffer;
-    });
+    audioContext.decodeAudioData(arrayBuffer)
+        .then(buffer => {
+            audioBuffers[syllableIndex] = buffer;
+        })
+        .catch(error => console.error('Error decoding WAV file:', error));
 }
 
 function initAudioContextMP3(arrayBuffer, syllableIndex) {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
     }
-    audioContext.decodeAudioData(arrayBuffer, function(buffer) {
-        audioBuffers[syllableIndex] = buffer;
-    });
-}
-
-function updatePitch() {
-    pitchValue.textContent = pitchControl.value;
+    audioContext.decodeAudioData(arrayBuffer)
+        .then(buffer => {
+            audioBuffers[syllableIndex] = buffer;
+        })
+        .catch(error => console.error('Error decoding MP3 file:', error));
 }
 
 function playSound() {
@@ -99,7 +99,7 @@ function saveSettings() {
 
     // 音節データを保存
     let syllableBuffers = audioBuffers.map(buffer => bufferToWavArrayBuffer(buffer));
-    localStorage.setItem('syllableBuffers', JSON.stringify(Array.from(syllableBuffers)));
+    localStorage.setItem('syllableBuffers', JSON.stringify(syllableBuffers));
 }
 
 function loadSettings() {
@@ -123,12 +123,12 @@ function loadSettings() {
     }
 
     if (savedSyllableBuffers) {
-        let syllableBuffers = JSON.parse(savedSyllableBuffers).map(bufferData => new Uint8Array(bufferData).buffer);
-        audioBuffers = [];
-        syllableBuffers.forEach(bufferData => {
-            audioContext.decodeAudioData(bufferData, function(buffer) {
-                audioBuffers.push(buffer);
-            });
+        let syllableBuffers = JSON.parse(savedSyllableBuffers).map(bufferData => {
+            let arrayBuffer = new Uint8Array(bufferData).buffer;
+            return audioContext.decodeAudioData(arrayBuffer);
+        });
+        Promise.all(syllableBuffers).then(buffers => {
+            audioBuffers = buffers;
         });
     }
 }
@@ -145,9 +145,12 @@ function bufferToWave(buffer) {
     let offset = 0;
     let pos = 0;
 
+    // RIFF Chunk Descriptor
     writeString(view, pos, 'RIFF'); pos += 4;
     view.setUint32(pos, length - 8, true); pos += 4;
     writeString(view, pos, 'WAVE'); pos += 4;
+
+    // fmt sub-chunk
     writeString(view, pos, 'fmt '); pos += 4;
     view.setUint32(pos, 16, true); pos += 4;
     view.setUint16(pos, 1, true); pos += 2;
@@ -156,9 +159,12 @@ function bufferToWave(buffer) {
     view.setUint32(pos, buffer.sampleRate * 4, true); pos += 4;
     view.setUint16(pos, buffer.numberOfChannels * 2, true); pos += 2;
     view.setUint16(pos, 16, true); pos += 2;
+
+    // data sub-chunk
     writeString(view, pos, 'data'); pos += 4;
     view.setUint32(pos, length - pos - 4, true); pos += 4;
 
+    // Write interleaved data
     for (let i = 0; i < buffer.numberOfChannels; i++) {
         channels.push(buffer.getChannelData(i));
     }
@@ -186,13 +192,14 @@ function writeString(view, offset, string) {
 function downloadEditedSound() {
     if (audioBuffers.length === 0) return;
 
-    let mergedBuffer = mergeBuffers(audioBuffers);
-    let audioBlob = bufferToWave(mergedBuffer);
-    let url = URL.createObjectURL(audioBlob);
-    let a = document.createElement('a');
-    a.href = url;
-    a.download = 'edited_sound.wav';
-    a.click();
+    mergeBuffers(audioBuffers).then(mergedBuffer => {
+        let audioBlob = new Blob([bufferToWave(mergedBuffer)], { type: 'audio/wav' });
+        let url = URL.createObjectURL(audioBlob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = 'edited_sound.wav';
+        a.click();
+    });
 }
 
 function mergeBuffers(buffers) {
