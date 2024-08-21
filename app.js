@@ -9,16 +9,16 @@ let pitchValue = document.getElementById('pitchValue');
 document.addEventListener('DOMContentLoaded', loadSettings);
 
 instrumentSelect.addEventListener('change', () => {
-    saveSettings();
     loadInstrument();
+    saveSettings();
 });
 pitchControl.addEventListener('input', () => {
     pitchValue.textContent = pitchControl.value;
     saveSettings();
 });
 syllableSelect.addEventListener('change', () => {
-    saveSettings();
     changeSyllable();
+    saveSettings();
 });
 document.getElementById('playButton').addEventListener('click', playSound);
 document.getElementById('addSyllableButton').addEventListener('click', addSyllable);
@@ -69,7 +69,7 @@ function playSound() {
     let playbackRate = Math.pow(2, pitchControl.value / 12);
 
     let playNext = (index) => {
-        if (index >= audioBuffers.length) return;
+        if (index >= audioBuffers.length || !audioBuffers[index]) return;
 
         let sourceNode = audioContext.createBufferSource();
         sourceNode.buffer = audioBuffers[index];
@@ -99,7 +99,13 @@ function addSyllable() {
 
 function changeSyllable() {
     currentSyllableIndex = syllableSelect.selectedIndex;
-    loadSettings(); // 音節切り替え時に設定とバッファを読み込む
+    let selectedBuffer = audioBuffers[currentSyllableIndex];
+    
+    if (selectedBuffer) {
+        // 現在の音節に対応する編集内容を反映
+        let selectedInstrument = instrumentSelect.value;
+        loadInstrument(selectedInstrument); // 適切なサウンドをロード
+    }
 }
 
 function saveSettings() {
