@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音声編集ソフト</title>
+</head>
+<body>
+    <h1>音声編集ソフト</h1>
+
+    <label for="instrumentSelect">楽器選択:</label>
+    <select id="instrumentSelect">
+        <option value="instrument1.wav">楽器 1</option>
+        <option value="instrument2.wav">楽器 2</option>
+        <option value="instrument3.wav">楽器 3</option>
+        <option value="instrument4.wav">楽器 4</option>
+        <option value="instrument5.wav">楽器 5</option>
+        <option value="instrument6.wav">楽器 6</option>
+        <option value="instrument7.wav">楽器 7</option>
+    </select>
+    
+    <label for="syllableSelect">音節選択:</label>
+    <select id="syllableSelect">
+        <option value="syllable1">音節 1</option>
+    </select>
+    
+    <br><br>
+    <label for="pitchControl">ピッチ変更:</label>
+    <input type="range" id="pitchControl" min="-12" max="12" value="0">
+    <span id="pitchValue">0</span> 半音
+    <br><br>
+    <button id="playButton">再生</button>
+    <button id="addSyllableButton">音節を追加</button>
+    <button id="downloadButton">ダウンロード</button>
+
+    <script src="app.js"></script>
+</body>
+</html>
