@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WaveSurfer.js Example</title>
-    <script src="https://unpkg.com/wavesurfer.js"></script>
     <style>
         #waveform {
             width: 100%;
@@ -20,26 +19,21 @@
     <h1>WaveSurfer.js Example</h1>
     <div id="waveform"></div>
     <div id="controls">
-        <input type="file" id="file-input" accept="audio/*">
         <button id="play-pause">Play</button>
     </div>
 
-    <script>
-        // WaveSurfer.jsのインスタンスを作成
+    <script type="module">
+        import WaveSurfer from 'https://cdn.jsdelivr.net/npm/wavesurfer.js@7/dist/wavesurfer.esm.js';
+
         const wavesurfer = WaveSurfer.create({
             container: '#waveform',
-            waveColor: 'violet',
-            progressColor: 'purple',
-            height: 200
+            waveColor: '#4F4A85',
+            progressColor: '#383351',
+            url: '/audio.mp3'
         });
 
-        // 音声ファイルの読み込み
-        document.getElementById('file-input').addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const url = URL.createObjectURL(file);
-                wavesurfer.load(url);
-            }
+        wavesurfer.on('interaction', () => {
+            wavesurfer.play();
         });
 
         // 再生・一時停止の制御
