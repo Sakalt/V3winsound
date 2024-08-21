@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WaveSurfer.js Example</title>
+    <title>WaveSurfer.js File Upload Example</title>
     <style>
         #waveform {
             width: 100%;
@@ -16,7 +16,8 @@
     </style>
 </head>
 <body>
-    <h1>WaveSurfer.js Example</h1>
+    <h1>WaveSurfer.js File Upload Example</h1>
+    <input type="file" id="file-input" accept="audio/*">
     <div id="waveform"></div>
     <div id="controls">
         <button id="play-pause">Play</button>
@@ -29,11 +30,16 @@
             container: '#waveform',
             waveColor: '#4F4A85',
             progressColor: '#383351',
-            url: '/audio.mp3'
+            height: 200
         });
 
-        wavesurfer.on('interaction', () => {
-            wavesurfer.play();
+        // 音声ファイルのアップロードと波形の表示
+        document.getElementById('file-input').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                wavesurfer.load(url);
+            }
         });
 
         // 再生・一時停止の制御
