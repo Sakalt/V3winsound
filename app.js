@@ -46,6 +46,7 @@ function initAudioContextWAV(arrayBuffer) {
     audioContext.decodeAudioData(arrayBuffer)
         .then(buffer => {
             audioBuffers[currentSyllableIndex] = buffer;
+            saveSettings();
         })
         .catch(error => console.error('Error decoding WAV file:', error));
 }
@@ -57,6 +58,7 @@ function initAudioContextMP3(arrayBuffer) {
     audioContext.decodeAudioData(arrayBuffer)
         .then(buffer => {
             audioBuffers[currentSyllableIndex] = buffer;
+            saveSettings();
         })
         .catch(error => console.error('Error decoding MP3 file:', error));
 }
@@ -90,13 +92,14 @@ function addSyllable() {
     syllableSelect.add(newOption);
     
     syllableSelect.value = newOption.value;
+    audioBuffers.push(null); // 新しい音節のための空バッファを追加
     changeSyllable();
     saveSettings();
 }
 
 function changeSyllable() {
     currentSyllableIndex = syllableSelect.selectedIndex;
-    loadInstrument();
+    loadSettings(); // 音節切り替え時に設定とバッファを読み込む
 }
 
 function saveSettings() {
@@ -104,7 +107,7 @@ function saveSettings() {
     localStorage.setItem('syllable', syllableSelect.value);
     localStorage.setItem('pitch', pitchControl.value);
 
-    let syllableBuffers = audioBuffers.map(buffer => bufferToWavArrayBuffer(buffer));
+    let syllableBuffers = audioBuffers.map(buffer => buffer ? bufferToWavArrayBuffer(buffer) : null);
     localStorage.setItem('syllableBuffers', JSON.stringify(syllableBuffers));
 }
 
@@ -130,9 +133,14 @@ function loadSettings() {
 
     if (savedSyllableBuffers) {
         let syllableBuffers = JSON.parse(savedSyllableBuffers).map(bufferData => {
-            let arrayBuffer = new Uint8Array(bufferData).buffer;
-            return audioContext.decodeAudioData(arrayBuffer);
+            if (bufferData) {
+                let arrayBuffer = new Uint8Array(bufferData).buffer;
+                return audioContext.decodeAudioData(arrayBuffer);
+            } else {
+                return null;
+            }
         });
+
         Promise.all(syllableBuffers).then(buffers => {
             audioBuffers = buffers;
         });
@@ -194,7 +202,7 @@ function writeString(view, offset, string) {
 function downloadEditedSound() {
     if (audioBuffers.length === 0) return;
 
-    mergeBuffers(audioBuffers).then(mergedBuffer => {
+    mergeBuffers(audioBuffers.filter(buffer => buffer !== null)).then(mergedBuffer => {
         let audioBlob = new Blob([bufferToWave(mergedBuffer)], { type: 'audio/wav' });
         let url = URL.createObjectURL(audioBlob);
         let a = document.createElement('a');
